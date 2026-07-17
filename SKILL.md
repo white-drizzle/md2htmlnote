@@ -1,17 +1,28 @@
 ---
 name: md2htmlnote
-description: Use when the user provides a MinerU-exported markdown file (with CDN image links and LaTeX formulas) and wants an HTML study-report page — a core interpretation suitable for presenting research progress to an advisor. Triggers on: MinerU markdown, PDF-to-markdown conversion, academic reading notes, HTML reading page generation, 核心解读, 学习汇报.
+description: Use when the user provides a MinerU-exported markdown file (with CDN image links and LaTeX formulas) and wants an HTML study-report page - a core interpretation suitable for presenting research progress to an advisor. Triggers on: MinerU markdown, PDF-to-markdown conversion, academic reading notes, HTML reading page generation, 核心解读, 学习汇报.
 ---
 
 # Markdown to HTML Reading Note (md2htmlnote)
 
 ## Overview
 
-Convert a MinerU-exported markdown file (LaTeX formulas + CDN-hosted images) into a self-contained HTML reading page. The output is a **core interpretation / study report** suitable for presenting to an advisor — combining faithful academic content with **detailed technical explanations** of difficult concepts.
+Convert a MinerU-exported markdown file (LaTeX formulas + CDN-hosted images) into a self-contained HTML reading page. The output is a **core interpretation / study report** suitable for presenting to an advisor - combining faithful academic content with **detailed technical explanations** of difficult concepts.
 
-**Core principle:** Don't just restyle the markdown — interpret the content. The reader is a graduate student capable of handling technical depth, but new to this specific field. The tone is that of a <strong>research progress report</strong>, not a beginner's tutorial.
+**Core principle:** Don't just restyle the markdown - interpret the content. The reader is a graduate student capable of handling technical depth, but new to this specific field. The tone is that of a research progress report, not a beginner's tutorial.
 
-**Language rule (NON-NEGOTIABLE):** The page body must be predominantly <strong>Chinese</strong>. English is ONLY allowed inside parentheses as term annotations (e.g. `<span class="key-term">`). No paragraph, bullet list, or table cell should be purely English. If the source markdown is in English, translate it to Chinese while preserving technical terms in bilingual annotations. Large blocks of untranslated English text are unacceptable.
+**Language rule (NON-NEGOTIABLE):** The page body must be predominantly **Chinese**. English is ONLY allowed inside parentheses as term annotations (e.g. `Chinese term（English term）` within `<span class="key-term">`). No paragraph, bullet list, or table cell should be purely English. If the source markdown is in English, translate it to Chinese while preserving technical terms in bilingual annotations.
+
+## CRITICAL: Use the Locked Template Verbatim
+
+**The #1 cause of inconsistent output across different model calls is improvising CSS/HTML structure.** To eliminate this, a **complete, locked HTML template** is provided in `template.html` (in this skill's directory). You MUST:
+
+1. **Read `template.html`** at the start of every invocation.
+2. **Copy its CSS `<style>` block byte-for-byte** - do not modify, reorder, rename, or "improve" any CSS rule.
+3. **Copy its HTML skeleton** (`<div class="layout">` → `<nav class="toc-sidebar">` → `<main class="content">` → `<header class="page-header">` → sections → `</main>` → lightbox → back-to-top → `<script>`) exactly as shown.
+4. **Only fill in content** (text, images, formulas, tables) into the designated slots. Never alter the structural wrappers, class names, or CSS properties.
+
+If you feel the template "could be better" - resist that urge. Consistency across all notes in a user's library is more valuable than any single-page optimization.
 
 ## When to Use
 
@@ -20,124 +31,155 @@ Convert a MinerU-exported markdown file (LaTeX formulas + CDN-hosted images) int
 - Markdown contains LaTeX formulas with `$...$` or `$$...$$`
 - User wants a student-friendly reading experience
 
-## Quick Reference
+## Output File Location
 
-| Pattern | Implementation |
-|---------|---------------|
-| Formula rendering | MathJax 3 CDN (tex-mml-chtml). For offline, switch to KaTeX local. |
-| Image display | `<figure>` + `<figcaption>` with `loading="lazy"` |
-| Image zoom | CSS-only lightbox on click, Esc to close |
-| Insight boxes | `.insight` divs with "Note" label |
-| Bilingual terms | `<span class="key-term">Chinese term</span>` inline |
-| Section ToC | Collapsible sticky sidebar, generated from `h2`/`h3` |
-| Print | `@media print` hide ToC/lightbox, expand width |
-| Image fallback | `onerror` handler replaces broken CDN images with placeholder |
+Save the generated HTML **next to the source `.md` file**, with the same base name but `.html` extension. Then open it in the browser for visual verification.
 
-## HTML Template Architecture
+## Content Assembly Rules
 
-Every generated page must include these structural layers:
+### 1. Page Header (fill into `<header class="page-header">`)
 
-```
-┌─ Page header (title + subtitle + metadata) ─┐
-├─ Sticky ToC sidebar (auto-generated) ───────┤
-├─ Body content ──────────────────────────────┤
-│   ├─ Section heading                        │
-│   ├─ Original content (faithful)             │
-│   ├─ .insight box (core interpretation)           │
-│   ├─ Figure (with lightbox)                  │
-│   └─ .summary-table (key points)              │
-├─ References section ────────────────────────┤
-├─ Floating back-to-top button ───────────────┤
-└─ Lightbox overlay (hidden by default) ──────┘
+Six lines, in this exact order. Each line has a **mandatory** field set - if a field is absent from the source, omit that portion but never invent data.
+
+```html
+<header class="page-header">
+  <h1>中文标题</h1>
+  <p class="sub">Original English Title</p>
+  <p class="cite">作者 et al. - <em>Journal</em> Year, Vol(Issue): Art#, Affiliation</p>
+  <p class="journal-info"><span class="badge badge-scie">SCIE Q2</span> IF=<span class="if-val">2.5</span> <span class="badge badge-ei">EI</span></p>
+  <p class="meta"><a href="https://doi.org/10.xxxx/xxx" target="_blank">DOI: 10.xxxx/xxx</a> | 收稿: YYYY-MM-DD | 接收: YYYY-MM-DD | 出版: YYYY-MM-DD</p>
+  <p class="keywords"><strong>关键词：</strong>keyword1; keyword2; keyword3</p>
+</header>
 ```
 
-### MinerU Image Parsing Rule
+**Line-by-line rules:**
 
-MinerU exports images and captions as TWO separate lines:
+| Line | Class | Content | Mandatory fields |
+|------|-------|---------|-----------------|
+| 1 | `h1` | Chinese translation of the paper title | Always |
+| 2 | `.sub` | Original English title (verbatim) | Always |
+| 3 | `.cite` | `作者 et al. - Journal Year, Vol(Issue): Art#, Affiliation` | Author, Journal, Year (if in source); Vol/Issue/Art#/Affiliation if available |
+| 4 | `.journal-info` | JCR quartile badge + IF + EI badge (see rules below) | Always if journal has JCR or EI indexing; omit if neither |
+| 5 | `.meta` | `<a href="https://doi.org/DOI" target="_blank">DOI: DOI</a> \| 收稿: date \| 接收: date \| 出版: date` | DOI if available (as clickable link); dates if in source. Omit entire line if none exist. Use ` \| ` as separator. |
+| 6 | `.keywords` | `关键词：kw1; kw2; kw3` (from source `Keywords:` line, translated to Chinese with English in parentheses) | Always if source has Keywords; omit if not |
 
-```markdown
-![image](https://cdn-mineru.openxlab.org.cn/.../abc123.jpg)
+**Rules:**
+- The `.meta` line uses monospace font for DOI readability. Use `word-break:break-all` for long DOIs.
+- **DOI MUST be a clickable hyperlink** pointing to `https://doi.org/DOI` with `target="_blank"`. Never write DOI as plain text. CSS `.meta a` is already in template - link color matches `.meta` text, underline + accent color on hover.
+- Keywords move from the abstract area to the header - they are paper identity, not body content.
+- If the source has no DOI and no dates, omit the `.meta` line entirely (do not write an empty line).
+- If the source has dates but no DOI (e.g. conference papers without DOI), write the dates without a DOI link.
+- `.cite` line format is fixed: `Author - Journal Year, Vol(Issue): Art#, Affiliation`. Never scramble the order. JCR/EI info is NOT in this line - it goes in `.journal-info`.
+- **JCR/EI indexing annotation** (in `.journal-info` line, as colored badges):
+  - Format: `<span class="badge badge-scie">SCIE Q2</span> IF=<span class="if-val">2.5</span> <span class="badge badge-ei">EI</span>`
+  - Badge classes: `badge-scie` (blue, for SCIE), `badge-esci` (orange, for ESCI), `badge-ei` (green, for EI), `badge-delisted` (red, for delisted journals).
+  - Use `SCIE` for SCI-Expanded journals, `ESCI` for Emerging Sources, `SSCI` for social sciences.
+  - IF value wrapped in `<span class="if-val">` for accent color highlighting.
+  - If the journal is NOT in JCR but is EI, write only `<span class="badge badge-ei">EI</span>`.
+  - If the journal has been delisted from SCIE, do not show the SCIE badge - only show EI badge if applicable.
+  - If the publication is a conference paper (not in JCR), write `<span class="badge badge-delisted">会议论文</span>`.
+  - If neither SCI nor EI, omit the `.journal-info` line entirely.
+  - **You MUST look up the journal's JCR quartile and IF** — do not guess. Use web search or academic databases (letpub, publisher official site). The IF value should be from the latest available JCR year. Publisher official sites are more authoritative than third-party databases for ESCI/newer journals.
 
-FIGURE 2.1 Irradiated gray body.
+### 2. Section Structure
+
+Map the source paper's sections to `<h2>` (major) and `<h3>` (minor). Each `<h2>` must have an `id` attribute for ToC linking (e.g. `id="s1"`, `id="s2"`, `id="abs"`).
+
+**Standard section order:**
+1. `id="abs"` - 研究摘要 (Abstract - rewrite as bullet-point summary + 1 insight box)
+2. `id="s1"` - 1. 引言 (Introduction)
+3. `id="s2"` - 2. 数值方法/实验方法 (Methods)
+4. `id="s3"` or `id="s4"` - Results & Discussion (the bulk)
+5. `id="s5"` - 结论 (Conclusions - numbered list)
+6. `id="sum"` - 核心要点总结 (Key takeaways - numbered list, ≤7 items)
+7. `id="app"` - 附录数据 (Appendix tables, if present)
+
+### 3. ToC Sidebar (fill into `<nav class="toc-sidebar">`)
+
+```html
+<h4>Paper Navigator</h4>
+<a href="#abs">摘要</a>
+<a href="#s1">1. 引言</a>
+<a href="#s2">2. 数值方法</a>
+<a href="#s2a" class="toc-h3">2.1 控制方程</a>
+<a href="#s2b" class="toc-h3">2.2 流体域建模</a>
+...
 ```
 
-**Always pair them together.** The `FIGURE X.X ...` line is the caption, not a separate paragraph. Scan the markdown for `FIGURE` lines and attach each as `<figcaption>` to the preceding `<figure>` block. If two or more `![image](...)` lines appear consecutively before a single `FIGURE` caption, they are a multi-part figure (e.g. left/right pair) — use `.figure-row` layout.
+- Use `class="toc-h3"` for subsection links (indented).
+- List every `h2` and `h3` that has an `id`.
 
-### Figure + Lightbox Pattern (NON-NEGOTIABLE)
+### 4. Insight Boxes (`.insight`)
 
-Every image must have click-to-zoom. This is the single most important feature for a technical reading page.
+Insert **immediately after** the concept they interpret - never cluster all at the end.
+
+```html
+<div class="insight">
+  <div class="label">Note</div>
+  <p><strong>Heading:</strong> Detailed technical explanation...</p>
+</div>
+```
+
+Rules:
+- **One concept per box.** If explaining 3 terms, use `label` = "术语速览" and a `<ul>`.
+- **Explain the physical mechanism** - not everyday analogies.
+- **Connect to practical relevance** for the subject field.
+- **Tone**: professional, research-report style. Avoid "you", "imagine", "like a...".
+- **Minimum 1 insight per major section** (`h2`).
+
+### 5. Bilingual Term Annotation
+
+First occurrence of every technical term:
+```html
+<span class="key-term">中文术语（English Term）</span>
+```
+Later occurrences: Chinese-only, no `<span>`.
+
+### 6. Figures with Lightbox (NON-NEGOTIABLE)
+
+Every image MUST have click-to-zoom. Use this exact pattern - copy the `onclick` and `onerror` strings verbatim:
 
 ```html
 <figure>
   <img src="CDN_URL" alt="Fig N" loading="lazy"
        onclick="document.getElementById('lb-img').src=this.src;document.getElementById('lightbox').classList.add('active')"
-       onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect width=%22400%22 height=%22300%22 fill=%22%23f5f2eb%22/%3E%3Ctext x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22%3EFigure unavailable%3C/text%3E%3C/svg%3E'">
-  <figcaption>图 2.X 中文描述 (English original caption)</figcaption>
+       onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect width=%22400%22 height=%22300%22 fill=%22%23f5f2eb%22/%3E%3Ctext x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22%3EFigure%20unavailable%3C/text%3E%3C/svg%3E'">
+  <figcaption>图 N &mdash; Chinese description</figcaption>
 </figure>
-
-<!-- At end of body: -->
-<div class="lightbox" id="lightbox" onclick="this.classList.remove('active')">
-  <span class="lightbox-close">&times;</span>
-  <img id="lb-img" src="">
-</div>
 ```
 
-Lightbox CSS:
-```css
-.lightbox { display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%;
-  background:rgba(0,0,0,.88); cursor:zoom-out; justify-content:center; align-items:center; padding:24px; }
-.lightbox.active { display:flex; }
-.lightbox img { max-width:95vw; max-height:95vh; object-fit:contain; }
-.lightbox-close { position:absolute; top:16px; right:24px; color:#fff; font-size:2rem; cursor:pointer; opacity:.6; }
-.lightbox-close:hover { opacity:1; }
-```
+The lightbox overlay and back-to-top button go at the END of the body (after `</main></div>`), copied from the template.
 
-### Insight Box Pattern
+### 7. Multi-Panel Figures (MinerU splitting problem)
 
-Insert `.insight` boxes RIGHT AFTER the concept they interpret — never group all insights at the end.
+MinerU breaks multi-panel figures into one CDN URL per sub-panel, interspersed with `(a)`, `(b)` labels as standalone lines. All share a single `FIGURE X.X` caption at the end.
+
+**Mandatory 6-step protocol:**
+
+1. **Collect** - Scan between consecutive `FIGURE` captions. Gather ALL `![image](URL)` lines and standalone labels like `(a)`, `(b)`.
+2. **Deduplicate** - If the same URL appears twice, keep only the first. Each sub-panel must have a unique URL.
+3. **Pair** - Match each URL with its nearest `(a)`/`(b)` label. If no label nearby, assign sequentially (a, b, c...).
+4. **Layout** - 1 panel → single `<figure>`; 2 panels → `.figure-row` (2-col grid); 3+ panels → chain `.figure-row` pairs.
+5. **Unified caption** - Place ONE `<figcaption>` after the last row (not inside any `<figure>`):
+   ```html
+   <figcaption style="text-align:center;margin-top:-4px;margin-bottom:20px;font-size:.83rem;color:var(--text-secondary);font-style:italic;">图 N &mdash; (a) description; (b) description; (c) description</figcaption>
+   ```
+6. **Verify** - Count URLs in HTML vs unique URLs in MD pool. Must match.
+
+**NEVER** render `(a)`, `(b)` as standalone `<p>` text - absorb into figcaption only.
+
+**NEVER** show only the last image before a caption - collect ALL between captions.
+
+### 8. Formulas with MathJax
+
+Use this exact block for each numbered equation:
 
 ```html
-<div class="insight">
-  <div class="label">Note</div>
-  <p>[Detailed technical explanation of the concept — why it matters, what physical mechanism is at work, how it connects to the broader topic]</p>
-</div>
+<div class="math-block">$$ LaTeX_here \tag{N} $$</div>
+<p class="math-note"><strong>解读：</strong>Plain-language Chinese explanation of what the formula means physically.</p>
 ```
 
-Rules for insight boxes:
-1. **One concept per box** — don't cram multiple ideas
-2. **Explain the physical mechanism** — not everyday analogies, but the underlying physics/engineering principle
-3. **Connect to practical relevance** — "What this means for [the subject field]"
-4. **Compare extremes** — use tables to show NIR vs FIR, equilibrium vs nonequilibrium
-5. **Tone**: professional, research-report style. Avoid "you", "imagine", "like a..." metaphors. Write as if presenting to an advisor.
-
-### Term Bilingual Annotation
-
-Every technical term on first occurrence must include its English equivalent:
-
-```html
-<span class="key-term">斯特藩–玻尔兹曼定律（Stefan–Boltzmann law）</span>
-```
-
-Later occurrences can use Chinese-only.
-
-### Section Summary Table
-
-At the end of each major section, include a quick-reference table:
-
-```html
-<div class="summary-table">
-  <h4>本节要点速查</h4>
-  <table>
-    <tr><th>概念</th><th>一句话解释</th></tr>
-    <tr><td>Concept</td><td>One-line plain-language explanation</td></tr>
-  </table>
-</div>
-```
-
-## Formula Handling
-
-**Rule:** Use MathJax 3 CDN for online reading (no `async` — synchronous load avoids render timing issues).
-
+**MathJax config (copy verbatim, do NOT add `async`):**
 ```html
 <script>
 MathJax = {
@@ -147,88 +189,155 @@ MathJax = {
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 ```
 
-**CRITICAL: displayMath must include BOTH delimiters.** MathJax's default `displayMath` recognizes `$$...$$` AND `\[...\]`. Specifying `displayMath: [['$$','$$']]` **overrides** the default array — it does NOT merge with it. If you omit `['\\[','\\]']`, all `\[...\]` blocks silently fail to render. This is the #1 cause of "formulas not showing up."
+**CRITICAL:** `displayMath` MUST include BOTH `['$$','$$']` AND `['\\[','\\]']`. Specifying only `['$$','$$']` **overrides** the default array (does NOT merge) - all `\[...\]` blocks silently break.
 
-**Offline alternative:** If the user mentions offline use, switch to KaTeX with local rendering.
+### 9. Tables — Distinguishing Original vs. Synthesized (CRITICAL)
 
-For each formula block, add a plain-language annotation below it:
+There are two kinds of tables in a reading note. They MUST use different naming conventions so the reader never mistakes a synthesized table for the paper's original data.
+
+#### Type 1: Original tables (from the paper)
+
+Tables that exist in the source paper with their own numbering (e.g. "Table 1", "Table 2" in the MD). Preserve the original number:
+
 ```html
-<div class="math-block">
-  \[ E = \sigma T^4 \tag{2.1} \]
-</div>
-<p class="math-note"><strong>解读：</strong>辐射能量 ∝ 温度的四次方。温度翻倍 → 辐射涨 16 倍。</p>
+<table>
+  <caption>表 1. 中文表标题（原文 Table 1）</caption>
+  <thead><tr><th>列 A</th><th>列 B</th></tr></thead>
+  <tbody>
+    <tr><td>值 1</td><td>值 2</td></tr>
+  </tbody>
+</table>
 ```
 
-## Styling Conventions
+#### Type 2: Synthesized tables (created by you during note-writing)
 
-### Color Palette (Academic-Technical)
-```css
-:root {
-  --text: #1a1a1a;
-  --text-secondary: #5a5a5a;
-  --bg: #fdfcfa;          /* Warm off-white — light academic style, never dark */
-  --surface: #ffffff;
-  --border: #e0dcd4;
-  --accent: #8b3a3a;        /* Deep burgundy for headings */
-  --highlight-box: #faf6ef;  /* Warm cream for insight boxes */
-  --highlight-border: #d4a843; /* Gold border for insight boxes */
-}
+Tables you create by reorganizing scattered text, parameters, or comparison data from the paper. These do NOT exist as numbered tables in the source. Use **letters** and explicitly mark the source:
+
+```html
+<table>
+  <caption>整理表 A. 中文标题（据原文第 X 节整理）</caption>
+  <thead><tr><th>列 A</th><th>列 B</th></tr></thead>
+  <tbody>
+    <tr><td>值 1</td><td>值 2</td></tr>
+  </tbody>
+</table>
 ```
 
-### Typography
-- **Body:** Serif (Noto Serif SC → Songti SC → Georgia), 16-17px, line-height 1.8
-- **Headings:** Serif (same stack as body), heavier weight — academic documents use serif for headings too
-- **Code/Math:** Monospace (JetBrains Mono → Fira Code → Consolas)
+**Rules:**
+- Original tables: `表 N.` (preserve the paper's number, append "（原文 Table N）" if helpful)
+- Synthesized tables: `整理表 A.`, `整理表 B.`, `整理表 C.` (use letters, never numbers, append "（据原文…整理）" to trace the source)
+- **NEVER** number synthesized tables as `表 1`, `表 2` — this creates ambiguity with the paper's own tables
+- If the paper has NO numbered tables at all, ALL tables in the note are "整理表"
+- The CSS already handles accent header, alternating rows, and shadow. Do NOT add inline styles to tables.
 
-### Responsive
-- **Desktop (default):** max-width ~860px, centered
-- **Tablet:** Reduce padding, stack two-column layouts
-- **Mobile (<640px):** Single column, 15px body font, hide sticky ToC
+### 10. Footer
 
-### Dark Mode (Forbidden)
-
-**Do NOT add `@media (prefers-color-scheme: dark)`.** The page MUST always use a light academic style: white or off-white background (e.g. `#fdfcfa` or `#ffffff`), dark text. This is a reading report for advisors, not a web app — dark mode adds no value and may cause rendering issues with formulas and figures.
-
-### Print Styles
-```css
-@media print {
-  .lightbox, .back-to-top, .toc-sidebar { display:none; }
-  body { max-width:100%; font-size:12pt; }
-  .insight { border:1px solid #ccc; box-shadow:none; }
-}
+End the content with a source citation line:
+```html
+<p style="margin-top:40px;color:var(--text-secondary);font-size:.83rem;border-top:1px solid var(--border);padding-top:16px;">
+文献来源：Author et al. "Title." <em>Journal</em> Year, Vol, Art#. DOI. 图片由 MinerU 从原 PDF 提取。
+</p>
 ```
+
+### 11. Content Audit (MANDATORY before claiming completion)
+
+After generating the HTML, you MUST perform a systematic content-completeness audit comparing the source MD against the HTML output. This is separate from the structural/URL checklist - it checks that **no substantive content was dropped**.
+
+**Audit procedure - check each item below:**
+
+1. **Keywords:** If the source has a `Keywords:` line, it must appear in the page-header `.keywords` line (not in the abstract body).
+2. **Acknowledgement / Funding:** If the source has an `ACKNOWLEDGEMENT` section or funding statement (grant numbers, funding bodies), include it after the conclusions.
+3. **References:** If the source has a `References` / `REFERENCES` section, transcribe ALL entries into an `<h2 id="refs">参考文献</h2>` section with a numbered `<ol>`. Add a ToC entry for it. Never omit the reference list.
+4. **Profile/Parameter specifications:** If the source contains detailed parameter specifications (e.g. "Profile Feature" with T_smin, T_smax, t_s, T_L, t_L, T_P, t_P variables, or similar process windows), these must be captured - either as a synthesized table or as inline text with the variable names preserved. Do not summarize them away into a vague sentence.
+5. **Notes/Cautions in source:** Lines like `NOTE:`, `注意:`, or cautionary remarks must be preserved, not silently dropped.
+6. **Appendix data tables:** If the source has appendix tables (Table A1, A2, etc.), include them in an `<h2 id="app">附录数据</h2>` section.
+7. **Section count parity:** Every `##` heading in the MD should have a corresponding `<h2>` in the HTML. If you merged or split sections, verify no content was lost in the process.
+8. **Key numerical values:** Spot-check 5-10 critical numbers from the MD (dimensions, temperatures, velocities, power values, material properties) and confirm they appear in the HTML.
+
+**How to execute the audit:** Run a systematic comparison using grep/diff between the MD and HTML for each item above. If any item is missing, fix it before declaring completion. Do not rely on memory - re-read both files and verify.
+
+## MinerU Image Parsing Rule (CRITICAL)
+
+MinerU exports images and captions as **separate lines**:
+
+```markdown
+![image](https://cdn-mineru.openxlab.org.cn/.../abc123.jpg)
+
+Figure 2.1 Irradiated gray body.
+```
+
+The `Figure X.X ...` line is the caption - always pair it with the image above. Never leave a caption as a standalone paragraph.
+
+**Metadata images to EXCLUDE:** Images appearing in the publisher header block (before the abstract) are journal metadata (publisher logo, copyright notice). Skip them - they are not content figures.
+
+## Styling Conventions (already in template - do NOT change)
+
+| Element | Spec |
+|---------|------|
+| Color palette | `--accent: #8b3a3a` (burgundy), `--bg: #fdfcfa` (warm off-white), `--highlight-border: #d4a843` (gold) |
+| Body font | `"Noto Serif SC", "Songti SC", Georgia, serif`, 16px, line-height 1.85 |
+| Layout | Flex: 230px sticky sidebar + 820px content, max-width 1200px |
+| Figure | Card style: border + shadow + 16px padding, hover shadow |
+| Table | Accent header (white text), alternating `#f9f7f2` rows, bottom-border-only cells |
+| Insight | Warm cream `#faf6ef` bg, gold border, `#fef3d6` label badge with `#8b6914` text |
+| Dark mode | **FORBIDDEN** - never add `@media (prefers-color-scheme: dark)` |
+| Responsive | `@media (max-width: 860px)` hides sidebar; `@media print` hides UI elements |
 
 ## Production Checklist
 
-Before calling the output complete, verify:
+Before calling the output complete, verify ALL of:
 
-- [ ] Every `<figure>` image has lightbox `onclick` and broken-image `onerror` fallback
-- [ ] Every LaTeX formula block has a `.math-note` plain-language annotation below it
-- [ ] Every major concept has an `.insight` box (at least 1 per major section)
-- [ ] First occurrence of every technical term has English equivalent in `<span class="key-term">`
-- [ ] At least one comparison table (NIR vs MIR, equilibrium vs nonequilibrium, etc.)
-- [ ] A sticky ToC sidebar for documents with 3+ sections
-- [ ] A floating back-to-top button
-- [ ] A end-of-document summary with key takeaways (numbered list, < 8 items)
-- [ ] CSS includes `@media print` and `@media (max-width: 640px)`
-- [ ] No raw LaTeX remains in visible text — all formulas rendered by MathJax
+**Structure & Styling:**
+- [ ] **CSS is byte-for-byte from `template.html`** - no improvised styles
+- [ ] **HTML skeleton matches template** - same class names, same element order
+- [ ] **DOI in `.meta` is a clickable hyperlink** (`<a href="https://doi.org/DOI" target="_blank">DOI: DOI</a>`) - never plain text
+- [ ] **JCR quartile + IF + EI in `.journal-info` line** (colored badges, e.g. `<span class="badge badge-scie">SCIE Q2</span> IF=<span class="if-val">2.5</span> <span class="badge badge-ei">EI</span>`) - looked up, not guessed
+- [ ] Sticky ToC sidebar with all `h2`/`h3` entries (including refs/appendix)
+- [ ] Back-to-top button + lightbox overlay + Esc key handler at end of body
+- [ ] Footer source citation line present
+- [ ] No raw LaTeX in visible text; no dark mode; no `async` on MathJax
+
+**Figures & Formulas:**
+- [ ] **Multi-panel figures:** All unique CDN URLs present; no duplicates; no metadata images
+- [ ] **Sub-panel labels** absorbed into `<figcaption>`, not rendered as body `<p>`
+- [ ] Every `<figure>` img has lightbox `onclick` + `onerror` fallback (verbatim strings)
+- [ ] Every formula block has `.math-note` annotation below it
+- [ ] MathJax `displayMath` includes BOTH `['$$','$$']` and `['\\[','\\]']`; no `async`
+
+**Content & Interpretation:**
+- [ ] Every major section has ≥1 `.insight` box
+- [ ] First occurrence of every technical term has English in `<span class="key-term">`
+- [ ] **Table numbering:** Original tables use `表 N.`; synthesized tables use `整理表 A/B/C.` with source annotation - never mix the two conventions
+- [ ] **Content audit completed** (Section 11): keywords, acknowledgement, references, parameter specs, NOTEs, appendix, section parity, key numbers all verified present
+
+**Final:**
+- [ ] File saved as `.html` next to source `.md`, opened in browser for visual check
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Images without lightbox | Every `<figure>` img needs `onclick` → lightbox |
-| Broken CDN images with no fallback | Add `onerror` SVG placeholder |
-| **MathJax `displayMath` overrides default instead of extending** | Always include BOTH: `[['$$','$$'], ['\\[','\\]']]`. Supplying `[['$$','$$']]` alone REPLACES the default array — `\[...\]` silently breaks. |
-| Async CDN loading | Remove `async` from MathJax `<script>` tag — synchronous load prevents render timing bugs |
-| Insight boxes clustered together | Interleave with original content |
-| Casual "beginner tutorial" tone | Use "Note" label, report/presentation tone, avoid analogies like "campfire", "sauna" |
-| No bilingual term annotation | Always `Chinese (English)` on first mention |
-| Tables without alternating row colors | `tbody tr:nth-child(even)` |
-| Monospace font for Chinese text | Never use monospace for body or headings |
-| Raw LaTeX visible in plain-language note | Always wrap in `\(...\)` or `\[...\]` |
-| Dark mode added | Remove `prefers-color-scheme: dark` — always light academic style |
-| Large blocks of untranslated English | Predominantly Chinese body text; English only in key-term annotations |
+| **Improvising CSS instead of using template** | Read `template.html` and copy its `<style>` block verbatim |
+| **Different layout each time** | Use the locked `.layout` flex structure from template - never margin-offset or float |
+| **Synthesized tables numbered as `表 1/表 2`** | Use `整理表 A/B/C` with letters - `表 N` is reserved for the paper's original tables only |
+| **References section omitted** | Always transcribe the full reference list into `<h2 id="refs">参考文献</h2>` with `<ol>` |
+| **Acknowledgement / funding dropped** | Include grant numbers and funding bodies after conclusions |
+| **Keywords dropped or placed in body** | Add to page-header `.keywords` line, not the abstract |
+| **DOI written as plain text** | Wrap in `<a href="https://doi.org/DOI" target="_blank">DOI: DOI</a>` - must be clickable |
+| **JCR/EI info missing or crammed into `.cite` line** | Put in separate `.journal-info` line with colored badges (`<span class="badge badge-scie">SCIE Q2</span> IF=<span class="if-val">x.x</span> <span class="badge badge-ei">EI</span>`) - look up via web search, never guess |
+| **Detailed parameter specs summarized away** | Preserve T_smin/T_smax/t_s/T_L/t_L etc. as a table or inline with variable names |
+| **NOTE / caution lines silently dropped** | Preserve all NOTE, 注意, cautionary remarks from source |
+| Sub-panel CDN URLs missing | Collect ALL images between consecutive FIGURE captions |
+| Same CDN URL in two `<figure>` blocks | Deduplicate - MinerU sometimes duplicates |
+| `(a)` `(b)` rendered as body `<p>` | Absorb into `<figcaption>` only |
+| MathJax `displayMath` missing `\[ \]` | Always include BOTH delimiter pairs |
+| `async` on MathJax script | Remove it - synchronous load prevents render bugs |
+| Insight boxes clustered at end | Interleave right after each concept |
+| Casual tutorial tone | Use "Note" label, report tone, no analogies |
+| No bilingual term annotation | Always `Chinese（English）` on first mention |
+| Dark mode added | Remove `prefers-color-scheme: dark` |
+| Large untranslated English blocks | Body must be predominantly Chinese |
+| **No content audit performed** | Run the Section 11 audit: grep MD vs HTML for keywords, refs, acks, params, NOTEs |
 
 ## The Checkpoint Rule
 

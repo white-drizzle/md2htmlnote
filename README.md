@@ -36,9 +36,14 @@ A [Claude Code](https://claude.ai/code) skill that converts MinerU-exported mark
 
 ```
 md2htmlnote/
-├── SKILL.md            # Main skill reference (required by Claude Code)
+├── SKILL.md            # Main skill reference (rules, checklist, content assembly)
+├── template.html       # LOCKED HTML template (single source of truth for CSS/structure)
 └── README.md           # This file
 ```
+
+### Why a locked template?
+
+Without a fixed template, different model calls produce different CSS, layouts, and class names - even when following the same skill instructions. The `template.html` file eliminates this: every invocation copies its `<style>` block and HTML skeleton verbatim, only filling in content. This guarantees that all notes in a user's library look structurally identical.
 
 ## License
 
