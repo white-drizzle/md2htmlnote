@@ -22,11 +22,12 @@ import sys
 # -- hard-coded invariants from template.html (edit template first, then here) --
 LB_ONCLICK = ("document.getElementById('lb-img').src=this.src;"
               "document.getElementById('lightbox').classList.add('active')")
-# MathJax's displayMath config in template.html contains a literal backslash
-# before '[' and ']'. Build the expected substring with chr(92) so no escaping
-# layer can corrupt it.
+# MathJax's displayMath config in template.html contains literal backslashes
+# before '[' and ']'. In the HTML source the delimiters appear as ['\\[','\\]']
+# (two backslash chars each, so the JS string '\[ ' reaches MathJax). Build the
+# expected substring with chr(92) so no escaping layer can corrupt it.
 _BS = chr(92)
-MATHJAX_CFG = "displayMath: [['$$','$$'], ['" + _BS + "[','" + _BS + "]']]"
+MATHJAX_CFG = "displayMath: [['$$','$$'], ['" + _BS + _BS + "[','" + _BS + _BS + "]']]"
 STYLE_BLOCK_RE = re.compile(r"<style[^>]*>(.*?)</style>", re.S)
 MATHBLOCK_TAG_RE = re.compile(r"\\tag\s*\{([^}]*)\}")
 
