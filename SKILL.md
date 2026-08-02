@@ -76,6 +76,9 @@ Six lines, in this exact order. Each line has a **mandatory** field set - if a f
   - Use `SCIE` for SCI-Expanded journals, `ESCI` for Emerging Sources, `SSCI` for social sciences.
   - IF value wrapped in `<span class="if-val">` for accent color highlighting.
   - If the journal is NOT in JCR but is EI, write only `<span class="badge badge-ei">EI</span>`.
+  - **SCIE 收录与 JCR 有无分区是两件事，都要查：** a journal may still be SCIE-indexed yet outside the current JCR (no quartile, no IF). `SCIE` badge = indexing identity; `Q1/Q2` = JCR quartile. They are independent.
+  - If the journal is SCIE-indexed but has NO JCR quartile/IF, write `<span class="badge badge-scie">SCIE</span>（不在 JCR 收录，无 IF）` - show the SCIE badge WITHOUT a quartile, and state the no-IF status explicitly.
+  - **EI status is its own lookup:** a journal may be SCIE yet NOT EI-Compendex indexed (e.g. Optik, ISSN 0030-4026). Check the indexing list (letpub "Indexing" row, Scopus source page) for EI Compendex explicitly; if absent, do NOT show the green EI badge. Optionally annotate `<span class="badge badge-delisted">非 EI</span>` where the reader might otherwise assume EI.
   - If the journal has been delisted from SCIE, do not show the SCIE badge - only show EI badge if applicable.
   - If the publication is a conference paper (not in JCR), write `<span class="badge badge-delisted">会议论文</span>`.
   - If neither SCI nor EI, omit the `.journal-info` line entirely.
@@ -86,7 +89,7 @@ Six lines, in this exact order. Each line has a **mandatory** field set - if a f
 To fill the `.journal-info` line, look up the journal's JCR quartile and IF in this fixed order — never improvise:
 
 1. **onescholar skill** (first): invoke the `onescholar` skill to query the journal's JCR quartile, IF, and CAS classification (data is JCR 2026). It returns the same metrics you display.
-2. **letpub.com.cn** (second): if onescholar returns nothing for the journal, query letpub.com.cn for the JCR quartile and IF.
+2. **letpub.com.cn** (second): if onescholar returns nothing for the journal — or the OneScholar API is unreachable (TLS/network error, common without a working proxy) — query letpub.com.cn for the JCR quartile and IF. On letpub, read BOTH the top "SCIE/ESCI" indexing badge AND the "Indexing (SCI collection) / Scopus (CiteScore)" row: SCIE-indexed does NOT imply a JCR quartile (some journals are SCIE but outside current JCR, `jcr_category: []`), and the absence of "EI Compendex" from the Indexing row means the journal is NOT EI.
 3. **Publisher official site** (third): if neither source has the journal (common for ESCI or very new journals), check the publisher's official site — publisher pages are more authoritative than third-party databases for ESCI/newer titles.
 4. **After two lookup attempts** with no result, write `查证中（unverified）` instead of a guessed quartile/IF. Never invent a quartile or IF.
 
