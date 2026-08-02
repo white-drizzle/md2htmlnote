@@ -23,7 +23,7 @@
 <title><!-- FILL: Chinese title --></title>
 <script>
 MathJax = {
-  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$'], ['\\[','\\]']], tags: 'ams' }
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$'], ['\\[','\\]']], tags: 'none' }
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -164,6 +164,30 @@ MathJax = {
 </figure>
 -->
 
+<!-- ═══════════ FIGURE EXAMPLE (multi-panel, 3-col → one .figure-row pair + one standalone <figure>) ═══════════ -->
+<!--
+<div class="figure-row">
+  <figure>
+    <img src="URL_a" alt="Fig Na" loading="lazy"
+         onclick="document.getElementById('lb-img').src=this.src;document.getElementById('lightbox').classList.add('active')"
+         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect width=%22400%22 height=%22300%22 fill=%22%23f5f2eb%22/%3E%3Ctext x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22%3EFigure%20unavailable%3C/text%3E%3C/svg%3E'">
+    <figcaption>(a) 子图描述</figcaption>
+  </figure>
+  <figure>
+    <img src="URL_b" alt="Fig Nb" loading="lazy"
+         onclick="document.getElementById('lb-img').src=this.src;document.getElementById('lightbox').classList.add('active')"
+         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect width=%22400%22 height=%22300%22 fill=%22%23f5f2eb%22/%3E%3Ctext x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22%3EFigure%20unavailable%3C/text%3E%3C/svg%3E'">
+    <figcaption>(b) 子图描述</figcaption>
+  </figure>
+</div>
+<figure style="margin:0;margin-top:14px;">
+  <img src="URL_c" alt="Fig Nc" loading="lazy"
+       onclick="document.getElementById('lb-img').src=this.src;document.getElementById('lightbox').classList.add('active')"
+       onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22%3E%3Crect width=%22400%22 height=%22300%22 fill=%22%23f5f2eb%22/%3E%3Ctext x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2214%22%3EFigure%20unavailable%3C/text%3E%3C/svg%3E'">
+  <figcaption>(c) 子图描述</figcaption>
+</figure>
+<figcaption style="text-align:center;margin-top:-4px;margin-bottom:20px;font-size:.83rem;color:var(--text-secondary);font-style:italic;">图 N &mdash; (a) 描述; (b) 描述; (c) 描述</figcaption>
+-->
 <!-- ═══════════ FIGURE EXAMPLE (multi-panel, 2-col) ═══════════ -->
 <!--
 <div class="figure-row">

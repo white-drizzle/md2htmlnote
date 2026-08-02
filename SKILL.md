@@ -79,7 +79,18 @@ Six lines, in this exact order. Each line has a **mandatory** field set - if a f
   - If the journal has been delisted from SCIE, do not show the SCIE badge - only show EI badge if applicable.
   - If the publication is a conference paper (not in JCR), write `<span class="badge badge-delisted">会议论文</span>`.
   - If neither SCI nor EI, omit the `.journal-info` line entirely.
-  - **You MUST look up the journal's JCR quartile and IF** — do not guess. Use web search or academic databases (letpub, publisher official site). The IF value should be from the latest available JCR year. Publisher official sites are more authoritative than third-party databases for ESCI/newer journals.
+  - **You MUST look up the journal's JCR quartile and IF** — do not guess. Follow the **Journal Lookup Protocol** in the section below. The IF value should be from the latest available JCR year.
+
+### Journal Lookup Protocol (MANDATORY ordering)
+
+To fill the `.journal-info` line, look up the journal's JCR quartile and IF in this fixed order — never improvise:
+
+1. **onescholar skill** (first): invoke the `onescholar` skill to query the journal's JCR quartile, IF, and CAS classification (data is JCR 2026). It returns the same metrics you display.
+2. **letpub.com.cn** (second): if onescholar returns nothing for the journal, query letpub.com.cn for the JCR quartile and IF.
+3. **Publisher official site** (third): if neither source has the journal (common for ESCI or very new journals), check the publisher's official site — publisher pages are more authoritative than third-party databases for ESCI/newer titles.
+4. **After two lookup attempts** with no result, write `查证中（unverified）` instead of a guessed quartile/IF. Never invent a quartile or IF.
+
+Do NOT skip to a different lookup order just because one tool "seems faster". Consistency of the lookup path matters more than speed.
 
 ### 2. Section Structure
 
@@ -159,11 +170,24 @@ MinerU breaks multi-panel figures into one CDN URL per sub-panel, interspersed w
 1. **Collect** - Scan between consecutive `FIGURE` captions. Gather ALL `![image](URL)` lines and standalone labels like `(a)`, `(b)`.
 2. **Deduplicate** - If the same URL appears twice, keep only the first. Each sub-panel must have a unique URL.
 3. **Pair** - Match each URL with its nearest `(a)`/`(b)` label. If no label nearby, assign sequentially (a, b, c...).
-4. **Layout** - 1 panel → single `<figure>`; 2 panels → `.figure-row` (2-col grid); 3+ panels → chain `.figure-row` pairs.
+4. **Layout** - Follow the panel-count → layout mapping table below. All layouts use the locked `.figure-row` (2-col grid) and standalone `<figure>` from the template.
 5. **Unified caption** - Place ONE `<figcaption>` after the last row (not inside any `<figure>`):
    ```html
    <figcaption style="text-align:center;margin-top:-4px;margin-bottom:20px;font-size:.83rem;color:var(--text-secondary);font-style:italic;">图 N &mdash; (a) description; (b) description; (c) description</figcaption>
    ```
+
+**Panel-count → layout mapping (MANDATORY):**
+
+| Panels | Layout |
+|--------|--------|
+| 1 | Single standalone `<figure>` |
+| 2 | One `.figure-row` (2-col grid) |
+| 3 | One `.figure-row` (a,b) + standalone `<figure>` (c) |
+| 4 | Two `.figure-row`s (a,b) + (c,d) |
+| 5 | Two `.figure-row`s (a,b)+(c,d) + standalone `<figure>` (e) |
+| N | `N//2` `.figure-row`s (each 2 panels) + 1 standalone `<figure>` if N is odd |
+
+Each `.figure-row` holds exactly two panels. The unified `<figcaption>` always goes **after the last element** of the figure group (standalone or row) — never inside a `<figure>`.
 6. **Verify** - Count URLs in HTML vs unique URLs in MD pool. Must match.
 
 **NEVER** render `(a)`, `(b)` as standalone `<p>` text - absorb into figcaption only.
@@ -183,13 +207,19 @@ Use this exact block for each numbered equation:
 ```html
 <script>
 MathJax = {
-  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$'], ['\\[','\\]']], tags: 'ams' }
+  tex: { inlineMath: [['$','$']], displayMath: [['$$','$$'], ['\\[','\\]']], tags: 'none' }
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 ```
 
 **CRITICAL:** `displayMath` MUST include BOTH `['$$','$$']` AND `['\\[','\\]']`. Specifying only `['$$','$$']` **overrides** the default array (does NOT merge) - all `\[...\]` blocks silently break.
+
+**Equation numbering (MANDATORY):** The template uses `tags: 'none'`, so MathJax will NOT auto-number anything. **Every** display formula in a `.math-block` MUST carry an explicit `\tag{N}`:
+
+- Numbering is unique and sequential across the whole page: (1), (2), (3)...
+- If you insert a formula, renumber all subsequent `\tag`s.
+- A formula without `\tag` renders with no number — an inconsistency the `verify.py` check will FAIL on. Always write the tag.
 
 ### 9. Tables — Distinguishing Original vs. Synthesized (CRITICAL)
 
@@ -256,6 +286,27 @@ After generating the HTML, you MUST perform a systematic content-completeness au
 
 **How to execute the audit:** Run a systematic comparison using grep/diff between the MD and HTML for each item above. If any item is missing, fix it before declaring completion. Do not rely on memory - re-read both files and verify.
 
+### 12. Automated Structural Verification (MANDATORY)
+
+The semantic audit above cannot be automated, but the **mechanical** checks can. After generating the HTML, run the bundled verifier **before** the browser check:
+
+```bash
+python verify.py <output.html> [source.md]
+```
+
+`verify.py` lives in this skill's directory. It checks, and fails with exit code 1 on any violation:
+
+- Every `<img>` carries the locked lightbox `onclick` + `onerror` strings
+- No duplicate CDN image URLs (data-URI fallbacks excluded)
+- `.math-block` count == `.math-note` count
+- Every display formula has a unique, sequential `\tag{N}` (enforces the numbering rule in §8)
+- MathJax config present, `displayMath` has both `$$` pairs, no `async`, and no `prefers-color-scheme: dark`
+- Every `<h2 id>` has a matching ToC link, and vice versa
+- `.figure-row` panel count matches the sub-description count in the unified `<figcaption>`
+- With `source.md`: keywords / references / acknowledgement / appendix presence
+
+**Pass/fail rule:** The page is NOT done until `verify.py` exits 0. If it fails, fix the listed issue and re-run. This replaces any "I think I did it" recollection with a deterministic gate.
+
 ## MinerU Image Parsing Rule (CRITICAL)
 
 MinerU exports images and captions as **separate lines**:
@@ -311,6 +362,7 @@ Before calling the output complete, verify ALL of:
 - [ ] **Content audit completed** (Section 11): keywords, acknowledgement, references, parameter specs, NOTEs, appendix, section parity, key numbers all verified present
 
 **Final:**
+- [ ] **`verify.py` run and exits 0** (`python verify.py <output.html> [source.md]`) — all structural checks pass
 - [ ] File saved as `.html` next to source `.md`, opened in browser for visual check
 
 ## Common Mistakes
@@ -338,6 +390,8 @@ Before calling the output complete, verify ALL of:
 | Dark mode added | Remove `prefers-color-scheme: dark` |
 | Large untranslated English blocks | Body must be predominantly Chinese |
 | **No content audit performed** | Run the Section 11 audit: grep MD vs HTML for keywords, refs, acks, params, NOTEs |
+| **`verify.py` not run / failing** | Run `python verify.py <html> [source.md]` and fix all reported failures before completion |
+| **Display formula without `\tag`** | Add `\tag{N}` (unique, sequential) — `tags:'none'` renders missing tags as unnumbered |
 
 ## The Checkpoint Rule
 
